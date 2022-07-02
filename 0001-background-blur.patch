@@ -1,0 +1,45 @@
+diff -uNr a/src/boxframe/backgroundmanager.cpp b/src/boxframe/backgroundmanager.cpp
+--- a/src/boxframe/backgroundmanager.cpp	2022-06-27 10:43:06.000000000 +0800
++++ b/src/boxframe/backgroundmanager.cpp	2022-07-02 12:25:19.042786585 +0800
+@@ -96,16 +96,10 @@
+ 
+         QDBusPendingReply<QString> blurReply = m_imageblur->Get(filePath);
+         blurReply.waitForFinished();
+-        if (m_imageEffectInter.isNull())
++        if (blurReply.isError())
+             return filePath;
+ 
+-        // 处理完会触发BlurDone信号,总之 imageblurFuture 必须得有返回值,否则会导致imageEffectWatcher->result()获取不到值导致异常
+-        QDBusPendingReply<QString> effectInterReply = m_imageEffectInter->Get("", blurReply.value());
+-        effectInterReply.waitForFinished();
+-        if (effectInterReply.isError())
+-            return filePath;
+-
+-        return effectInterReply.value();
++        return blurReply.value();
+     });
+     imageEffectWatcher->setFuture(imageblurFuture);
+ 
+@@ -118,16 +112,15 @@
+             emit currentWorkspaceBackgroundChanged(m_background);
+     });
+     QFuture<QString> effectInterFuture = QtConcurrent::run([this, filePath]() ->QString {
+-        if (!m_imageEffectInter)
++        if (m_imageblur.isNull())
+             return filePath;
+ 
+-        QDBusPendingReply<QString> effectInterReply = m_imageEffectInter->Get("", filePath);
+-        effectInterReply.waitForFinished();
+-        if (effectInterReply.isError()) {
+-            qWarning() << "ImageEffeblur Get error:" << effectInterReply.error();
++        QDBusPendingReply<QString> blurReply = m_imageblur->Get(filePath);
++        blurReply.waitForFinished();
++        if (blurReply.isError())
+             return filePath;
+-        }
+-        return effectInterReply.value();
++
++        return blurReply.value();
+     });
+     effectInterWatcher->setFuture(effectInterFuture);
+ }
